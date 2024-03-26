@@ -5,8 +5,9 @@ import time
 K_PLY = 3
 
 class ChessNode:
-    def __init__(self, state, player, depth):
+    def __init__(self, state, action, player, depth):
         self.state = state # env state
+        self.action = action # action made to get to the state
         self.player = player # boolean, WHITE - TRUE, BLACK - FALSE
         self.depth = depth
         self.children = get_children(self)
@@ -22,7 +23,7 @@ def get_children(curChessNode):
         actions = [env.move_to_action(move) for move in moves]
         for action in actions:
             new_state, reward, done, info = env.step(action)
-            childChessNodes.append(ChessNode(new_state, not curChessNode.player, curChessNode.depth + 1))
+            childChessNodes.append(ChessNode(new_state, action, not curChessNode.player, curChessNode.depth + 1))
             initial_state = env.reset()
             
     return childChessNodes
@@ -51,11 +52,54 @@ def minimax(curChessNode):
           curChessNode.minimax = min(curChessNode.minimax, minimax(child)) 
         return curChessNode.minimax
     
+def play_chess(env, curChessNode):
+    bestMoveScore = 0
+    bestMove = None
+    bestAction = None
+    
+    if len(curChessNode.children) == 0:
+        return
+    
+    elif curChessNode.player == True:
+        bestMoveScore = curChessNode.children[0].minimax
+        bestMove = curChessNode.children[0]
+        bestAction = curChessNode.children[0].action
+        
+        for child in curChessNode.children:
+            if bestMoveScore < child.minimax:
+                bestMoveScore = child.minimax
+                bestMove = child
+                bestAction = child.action
+        
+    else:
+        bestMoveScore = curChessNode.children[0].minimax
+        bestMove = curChessNode.children[0]
+        bestAction = curChessNode.children[0].action
+        
+        for child in curChessNode.children:
+            if bestMoveScore > child.minimax:
+                bestMoveScore = child.minimax
+                bestMove = child
+                bestAction = child.action
+                
+    new_state, reward, done, info = env.step(bestAction)
+    env.render()
+    play_chess(env, bestMove)              
+    
 
-env = ChessEnvV2(opponent='none')
-state = env.state
-
-start = time.time()
-root = ChessNode(state, True, 0)
-print(f'Created tree in {time.time()-start}s')
-compute_minimax(root)
+if __name__ == "__main__":
+    # create the game tree
+    env = ChessEnvV2(opponent='none')
+    state = env.state
+    start = time.time()
+    root = ChessNode(state, None, True, 0)
+    print(f'Created tree in {time.time()-start}s')
+    
+    # compute the minimax values
+    compute_minimax(root)
+    
+    # play the game
+    #env = ChessEnvV2(opponent='none')
+    play_chess(env, root)
+    
+    
