@@ -134,7 +134,7 @@ class ChessEnvV2(gym.Env):
         self,
         player_color=WHITE,
         opponent="random",
-        log=True,
+        log=False, # source code: True
         initial_board=DEFAULT_BOARD,
     ):
         # constants
