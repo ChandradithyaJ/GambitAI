@@ -133,6 +133,7 @@ class ChessEnvV2(gym.Env):
     def __init__(
         self,
         player_color=WHITE,
+        current_move_by=WHITE,
         opponent="random",
         log=False, # source code: True
         initial_board=DEFAULT_BOARD,
@@ -162,7 +163,7 @@ class ChessEnvV2(gym.Env):
 
         # reset and build state
         self.seed()
-        self.reset()
+        self.reset(current_move_by)
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -180,7 +181,7 @@ class ChessEnvV2(gym.Env):
 
         return [seed]
 
-    def reset(self):
+    def reset(self, current_move_by):
         """
         Resets the state of the environment, returning an initial observation.
         Outputs -> observation : the initial observation of the space. (Initial reward is assumed to be 0.)
@@ -188,7 +189,7 @@ class ChessEnvV2(gym.Env):
         self.board = self.initial_board
         # self.prev_board = None ## TODO: use prev_board to check for en-passant mvoes
         self.done = False
-        self.current_player = WHITE
+        self.current_player = current_move_by
         self.saved_boards = defaultdict(lambda: 0)
         self.repetitions = 0  # 3 repetitions ==> DRAW
         self.move_count = 0
@@ -203,7 +204,7 @@ class ChessEnvV2(gym.Env):
         # update state with engine
         self.state = self.engine.update_state(self.state)
         # pre-calculate possible moves
-        self.possible_moves = self.get_possible_moves(state=self.state, player=WHITE)
+        self.possible_moves = self.get_possible_moves(state=self.state, player=self.current_player)
         # If player chooses black, make white opponnent move first
         if self.player == BLACK:
             white_first_move = self.opponent_policy(self)
@@ -239,6 +240,7 @@ class ChessEnvV2(gym.Env):
         # action invalid in current state
         if action not in self.possible_actions:
             reward = INVALID_ACTION_REWARD
+            print("-----Invalid Action-----")
             return self.state, reward, self.done, self.info
 
         # Game is done
@@ -529,6 +531,7 @@ class ChessEnvV2(gym.Env):
         x1, y1 = _to // 8, _to % 8
         if not as_string:
             return ((x0, y0), (x1, y1))
+        move = self.action_to_move(action)
         return self.move_to_str_code(move)
 
     def move_to_str_code(self, move):
