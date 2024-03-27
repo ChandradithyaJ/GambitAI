@@ -1,7 +1,19 @@
 from gym_chess import ChessEnvV2
-import time
+import time, os
 
 K_PLY = 3
+
+def clear_terminal():
+  """Clears the terminal"""
+  # Use clear command for Linux/Unix systems
+  if os.name == 'posix':
+    os.system('clear')
+  # Use cls command for Windows systems
+  else:
+    os.system('cls')
+    
+def get_current_player(curPlayerBool):
+    return "WHITE" if curPlayerBool==True else "BLACK"
 
 class ChessNode:
     def __init__(self, state, action, player, depth):
@@ -15,7 +27,7 @@ class ChessNode:
     
 def get_children(curChessNode):
     childChessNodes = []
-    cur_player = "WHITE" if curChessNode.player==True else "BLACK"
+    cur_player = get_current_player(curChessNode.player)
         
     if curChessNode.depth < K_PLY:
         env = ChessEnvV2(
@@ -42,7 +54,7 @@ def compute_minimax(root):
     start = time.time()
     for child in root.children:
         root.minimax = max(root.minimax, minimax(child))
-    print(f'Computed Minimax values for the tree in {time.time()-start}s')
+    #print(f'Computed Minimax values for the tree in {time.time()-start}s')
           
 def minimax(curChessNode):
     if len(curChessNode.children) == 0:
@@ -56,52 +68,54 @@ def minimax(curChessNode):
           curChessNode.minimax = min(curChessNode.minimax, minimax(child)) 
         return curChessNode.minimax
     
-def play_chess(env, curChessNode): 
-       
-    while len(curChessNode.children) != 0:
+def play_chess(env, state, curPlayer, clear_screen=True):
+    done = False
+    while done != True:
         
-        bestMoveScore = curChessNode.children[0].minimax
-        bestMove = curChessNode.children[0]
-        bestAction = curChessNode.children[0].action
+        curChessNode = ChessNode(state, None, curPlayer, 0)
+        compute_minimax(curChessNode)
         
-        curChessNodeChildren = curChessNode.children
-        
-        if curChessNode.player == True:
-            for child in curChessNodeChildren:
-                if bestMoveScore < child.minimax:
-                    bestMoveScore = child.minimax
-                    bestMove = child
-                    bestAction = child.action
-        
-        else: 
-            for child in curChessNodeChildren:
-                if bestMoveScore > child.minimax:
-                    bestMoveScore = child.minimax
-                    bestMove = child
-                    bestAction = child.action
-                    
-        curChessNode = bestMove
-        new_state, reward, done, info = env.step(bestAction)
-        env.render()  
-        
-        if done:
-            break            
+        while len(curChessNode.children) != 0:
+            
+            if clear_screen:
+                # time for the user to see the screen before it is cleared
+                time.sleep(1)
+            
+            bestMoveScore = curChessNode.children[0].minimax
+            bestMove = curChessNode.children[0]
+            bestAction = curChessNode.children[0].action
+            
+            curChessNodeChildren = curChessNode.children
+            
+            if curChessNode.player == True:
+                for child in curChessNodeChildren:
+                    if bestMoveScore < child.minimax:
+                        bestMoveScore = child.minimax
+                        bestMove = child
+                        bestAction = child.action
+            
+            else: 
+                for child in curChessNodeChildren:
+                    if bestMoveScore > child.minimax:
+                        bestMoveScore = child.minimax
+                        bestMove = child
+                        bestAction = child.action
+                        
+            curChessNode = bestMove
+            state, reward, done, info = env.step(bestAction)
+            curPlayer = not curPlayer # opponent's move
+            
+            if clear_screen:
+                clear_terminal()
+
+            env.render()
+            
+            if done:
+                break            
     
 
 if __name__ == "__main__":
-    # create the game tree
-    env = ChessEnvV2(opponent='none')
-    state = env.state
-    start = time.time()
-    root = ChessNode(state, None, True, 0)
-    print(f'Created tree in {time.time()-start}s')
-    
-    # compute the minimax values
-    compute_minimax(root)
-    
-    # play the game
     env = ChessEnvV2(opponent='none')
     env.render()
-    play_chess(env, root)
-    
+    play_chess(env, env.state, True)
     
