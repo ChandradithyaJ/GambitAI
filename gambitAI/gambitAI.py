@@ -50,6 +50,10 @@ def get_init_reward(curChessNode):
     else:
         return 1e4
     
+def eval(curChessNode):
+    """Evaluate Function for the leaf nodes of the game tree"""
+    return 1
+    
 def compute_minimax(root):
     start = time.time()
     for child in root.children:
@@ -58,7 +62,7 @@ def compute_minimax(root):
           
 def minimax(curChessNode):
     if len(curChessNode.children) == 0:
-        return 1
+        return eval(curChessNode)
     elif curChessNode.player == True:
         for child in curChessNode.children:
           curChessNode.minimax = max(curChessNode.minimax, minimax(child)) 
