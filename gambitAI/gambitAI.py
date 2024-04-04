@@ -51,28 +51,24 @@ def get_FEN(board, player_to_move, wk_castle, wq_castle, bk_castle, bq_castle, h
     fen_string += " " + "-"
     
     # encode the halfmove clock and the full move number
-    fen_string += " " + str(halfmove_clock) + " " + fullmove_number
+    fen_string += " " + str(halfmove_clock) + " " + str(fullmove_number)
     
     return fen_string
 
-def get_halfmoveclock_and_halfmove_number(halfmove_clock, halfmove_number, curChessNode, piece_moved):
-    new_hfc = halfmove_clock
-    new_hmn = halfmove_number
+def get_halfmoveclock_and_halfmove_number(halfmove_clock, curChessNode, piece_moved, num_pieces_on_board):
     
     # halfmove clock checks:
     # 1. piece captures
     cur_num_pieces = get_num_pieces_on_board(curChessNode.state['board'])
-    new_hfc += 1 # update
+    new_hfc = halfmove_clock + 1 # update
     if num_pieces_on_board != cur_num_pieces:
         new_hfc = 0 # reset
     # 2. pawn advance
     if abs(piece_moved) == 6:
         new_hfc = 0 # reset
         num_pieces_on_board = cur_num_pieces
-            
-    # calculate fullmove
-    new_hmn = halfmove_number + 1
-    return new_hfc, new_hmn
+    
+    return new_hfc, num_pieces_on_board
 
 class ChessNode:
     def __init__(self, state, action, player, depth):
@@ -138,6 +134,17 @@ def play_chess(env, state, curPlayer, clear_screen=True):
     while done != True:
         
         curChessNode = ChessNode(state, None, curPlayer, 0)
+        state_FEN = get_FEN(
+            curChessNode.state['board'],
+            get_current_player(curPlayer),
+            env.white_king_castle_is_possible,
+            env.white_queen_castle_is_possible,
+            env.black_king_castle_is_possible,
+            env.black_queen_castle_is_possible,
+            halfmove_clock,
+            fullmove_number
+        )
+        print(state_FEN)
         compute_minimax(curChessNode)
         
         while len(curChessNode.children) != 0:
@@ -168,7 +175,7 @@ def play_chess(env, state, curPlayer, clear_screen=True):
                         
             # infer which piece has been moved
             moved_piece_loc = env.action_to_move(bestAction)[0]
-            piece_moved = curChessNode.state['board'][moved_piece_loc[0]][moved_piece_loc][0]           
+            piece_moved = curChessNode.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]          
             
             curChessNode = bestMove
             state, reward, done, info = env.step(bestAction)
@@ -178,12 +185,11 @@ def play_chess(env, state, curPlayer, clear_screen=True):
                 clear_terminal()
 
             env.render()
-            print(env.action_to_move(bestAction))
             
-            halfmove_clock, halfmove_number = get_halfmoveclock_and_halfmove_number(
-                halfmove_clock, fullmove_number, curChessNode, piece_moved
+            halfmove_clock, num_pieces_on_board = get_halfmoveclock_and_halfmove_number(
+                halfmove_clock, curChessNode, piece_moved, num_pieces_on_board
             )
-            fullmove_number = halfmove_number/2 + 1
+            fullmove_number = info['move_count'] + 1
             
             if done: # game over
                 break            
