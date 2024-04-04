@@ -112,6 +112,9 @@ num_to_piece_char = {
     6: 'P'
 }
 
+def get_num_to_piece_char():
+    return num_to_piece_char
+
 
 def highlight(string, background="white", color="gray"):
     return utils.colorize(utils.colorize(string, color), background, highlight=True)
