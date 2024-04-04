@@ -1,10 +1,7 @@
-import os
 import sys
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass
 from six import StringIO
-from pprint import pprint
 
 import gym
 from gym import spaces, error, utils
@@ -105,6 +102,15 @@ DEFAULT_BOARD = [
     [6, 6, 6, 6, 6, 6, 6, 6],
     [3, 5, 4, 2, 1, 4, 5, 3],
 ]
+
+num_to_piece_char = {
+    1: 'K',
+    2: 'Q',
+    3: 'R',
+    4: 'B',
+    5: 'K',
+    6: 'P'
+}
 
 
 def highlight(string, background="white", color="gray"):
@@ -367,7 +373,7 @@ class ChessEnvV2(gym.Env):
     @property
     def current_player_is_black(self):
         return not self.current_player_is_white
-
+    
     def king_is_checked(self, player):
         if player == WHITE:
             return self.white_king_is_checked

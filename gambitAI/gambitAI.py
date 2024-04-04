@@ -1,7 +1,7 @@
-from gym_chess import ChessEnvV2
+from gym_chess import ChessEnvV2, num_to_piece_char
 import time, os
 
-K_PLY = 3
+K_PLY = 2
 
 def clear_terminal():
   """Clears the terminal"""
@@ -15,6 +15,55 @@ def clear_terminal():
 def get_current_player(curPlayerBool):
     return "WHITE" if curPlayerBool==True else "BLACK"
 
+def get_FEN(board, player_to_move, wk_castle, wq_castle, bk_castle, bq_castle, halfmove_clock, fullmove_number):
+    fen_string = ""
+    
+    # encode the piece placement
+    for idx, row in enumerate(board):
+        empty_squares = 0
+        for piece in row:
+            if piece == 0:
+                empty_squares += 1
+            else:
+                if empty_squares > 0:
+                    fen_string += str(empty_squares)
+                    empty_squares = 0
+                # uppercase letters for white and lowercase letters for black 
+                fen_string += num_to_piece_char[piece] if piece > 0 else num_to_piece_char[abs(piece)].lower()
+        if empty_squares > 0:
+            fen_string += str(empty_squares)
+        fen_string += "/" if idx != 7 else ""
+        
+    # encode current player
+    fen_string += " " + player_to_move[0].lower()
+    
+    # encode castling rights
+    castling_string = ""
+    no_castling_available = True
+    if wk_castle:
+        castling_string += "K"
+        no_castling_available = False
+    if wq_castle:
+        castling_string += "Q"
+        no_castling_available = False
+    if bk_castle:
+        castling_string += "k"
+        no_castling_available = False
+    if bq_castle:
+        castling_string += "q"
+        no_castling_available = False
+    if no_castling_available:
+        castling_string += "-"
+    fen_string += " " + castling_string
+    
+    # encode the enpassant possibility (not considered now)
+    fen_string += " " + "-"
+    
+    # encode the halfmove clock and the full move number
+    fen_string += " " + str(halfmove_clock) + " " + fullmove_number
+    
+    return fen_string
+
 class ChessNode:
     def __init__(self, state, action, player, depth):
         self.state = state # env state
@@ -24,12 +73,11 @@ class ChessNode:
         self.children = get_children(self)
         self.minimax = get_init_reward(self)
         
-    
 def get_children(curChessNode):
     childChessNodes = []
     cur_player = get_current_player(curChessNode.player)
         
-    if curChessNode.depth < K_PLY:
+    if curChessNode.depth <= K_PLY:
         env = ChessEnvV2(
             opponent='none',
             initial_board=curChessNode.state['board'],
@@ -50,7 +98,7 @@ def get_init_reward(curChessNode):
     else:
         return 1e4
     
-def eval(curChessNode):
+def eval(FEN):
     """Evaluate Function for the leaf nodes of the game tree"""
     return 1
     
