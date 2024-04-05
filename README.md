@@ -1,6 +1,6 @@
 # GambitAI ♟️
 
-A Chess AI bot using the [gym-chess](https://github.com/genyrosk/gym-chess) environment. Uses the minimax algorithm with Stockfish 16.1's evaluation function.
+A Chess AI bot using the [gym-chess](https://github.com/genyrosk/gym-chess) environment. Uses the minimax algorithm with [Stockfish](https://stockfishchess.org) 16.1's evaluation function.
 
 <table style="text-align:center;border-spacing:0pt;font-family:'Arial Unicode MS'; border-collapse:collapse; border-color: black; border-style: solid; border-width: 0pt 0pt 0pt 0pt">
 <tr>
