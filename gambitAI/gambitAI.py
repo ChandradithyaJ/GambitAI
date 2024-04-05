@@ -1,9 +1,11 @@
 from gym_chess import ChessEnvV2
 from gym_chess.envs.chess_v2 import get_num_to_piece_char
+from stockfish import Stockfish
 from utils import clear_terminal, get_num_pieces_on_board, get_current_player
 import time
 
 K_PLY = 2
+stockfish = Stockfish("stockfish-windows-x86-64-avx2/stockfish/stockfish-windows-x86-64-avx2.exe")
 
 def get_FEN(board, player_to_move, wk_castle, wq_castle, bk_castle, bq_castle, halfmove_clock, fullmove_number):
     num_to_piece_char = get_num_to_piece_char()
@@ -55,7 +57,7 @@ def get_FEN(board, player_to_move, wk_castle, wq_castle, bk_castle, bq_castle, h
     
     return fen_string
 
-def get_halfmoveclock_and_halfmove_number(halfmove_clock, curChessNode, piece_moved, num_pieces_on_board):
+def get_req_data_for_FEN(halfmove_clock, curChessNode, piece_moved, num_pieces_on_board, halfmove_number):
     
     # halfmove clock checks:
     # 1. piece captures
@@ -68,7 +70,7 @@ def get_halfmoveclock_and_halfmove_number(halfmove_clock, curChessNode, piece_mo
         new_hfc = 0 # reset
         num_pieces_on_board = cur_num_pieces
     
-    return new_hfc, num_pieces_on_board
+    return new_hfc, num_pieces_on_board, halfmove_number+1
 
 class ChessNode:
     def __init__(self, state, action, player, depth):
@@ -94,7 +96,7 @@ def get_children(curChessNode):
         for action in actions:
             new_state, reward, done, info = env.step(action)
             childChessNodes.append(ChessNode(new_state, action, not curChessNode.player, curChessNode.depth + 1))
-            initial_state = env.reset(current_move_by=cur_player)
+            _ = env.reset(current_move_by=cur_player)
             
     return childChessNodes
 
@@ -104,48 +106,105 @@ def get_init_reward(curChessNode):
     else:
         return 1e4
     
-def eval(FEN):
+def eval(curChessNode, halfmove_clock, halfmove_number):
     """Evaluation function for the leaf nodes of the game tree"""
-    return 1
+    state_FEN = get_FEN(
+            curChessNode.state['board'],
+            get_current_player(curChessNode.player),
+            curChessNode.state['white_king_castle_is_possible'],
+            curChessNode.state['white_queen_castle_is_possible'],
+            curChessNode.state['black_king_castle_is_possible'],
+            curChessNode.state['black_queen_castle_is_possible'],
+            halfmove_clock,
+            int(halfmove_number/2) + 1
+        )
+    stockfish.set_fen_position(state_FEN)
+    return stockfish.get_evaluation()["value"]
     
-def compute_minimax(root):
+def compute_minimax(root, halfmove_clock, num_pieces_on_board, halfmove_number):
     start = time.time()
     for child in root.children:
-        root.minimax = max(root.minimax, minimax(child))
+        hmc = halfmove_clock
+        npb = num_pieces_on_board
+        hmn = halfmove_number
+        
+        moved_piece_loc = env.action_to_move(child.action)[0]
+        piece_moved = child.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]
+        
+        hmc, npb, hmn = get_req_data_for_FEN(
+            hmc,
+            child,
+            piece_moved,
+            npb,
+            hmn
+        )
+        root.minimax = max(
+                            root.minimax, 
+                            minimax(child, hmc, npb, hmn)
+                        )
     #print(f'Computed Minimax values for the tree in {time.time()-start}s')
           
-def minimax(curChessNode):
+def minimax(curChessNode, halfmove_clock, num_pieces_on_board, halfmove_number):
     if len(curChessNode.children) == 0:
-        return eval(curChessNode)
+        return eval(curChessNode, halfmove_clock, halfmove_number)
     elif curChessNode.player == True:
         for child in curChessNode.children:
-          curChessNode.minimax = max(curChessNode.minimax, minimax(child)) 
-        return curChessNode.minimax
+            hmc = halfmove_clock
+            npb = num_pieces_on_board
+            hmn = halfmove_number
+            
+            moved_piece_loc = env.action_to_move(child.action)[0]
+            piece_moved = child.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]
+            
+            hmc, npb, hmn = get_req_data_for_FEN(
+                hmc,
+                child,
+                piece_moved,
+                npb,
+                hmn
+            )
+            curChessNode.minimax = max(
+                                curChessNode.minimax, 
+                                minimax(child, hmc, npb, hmn)
+                            )
+            return curChessNode.minimax
     else:
         for child in curChessNode.children:
-          curChessNode.minimax = min(curChessNode.minimax, minimax(child)) 
-        return curChessNode.minimax
+            hmc = halfmove_clock
+            npb = num_pieces_on_board
+            hmn = halfmove_number
+            
+            moved_piece_loc = env.action_to_move(child.action)[0]
+            piece_moved = child.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]
+            
+            hmc, npb, hmn = get_req_data_for_FEN(
+                hmc,
+                child,
+                piece_moved,
+                npb,
+                hmn
+            )
+            curChessNode.minimax = min(
+                                curChessNode.minimax, 
+                                minimax(child, hmc, npb, hmn)
+                            )
+            return curChessNode.minimax
     
 def play_chess(env, state, curPlayer, clear_screen=True):
     done = False
     halfmove_clock = 0 # number of halfmoves since the last capture or pawn advance
-    fullmove_number = 1 # current full move
+    halfmove_number = 0 # half moves finished
     num_pieces_on_board = 32 # maintaing a count to identify piece captures
     while done != True:
         
         curChessNode = ChessNode(state, None, curPlayer, 0)
-        state_FEN = get_FEN(
-            curChessNode.state['board'],
-            get_current_player(curPlayer),
-            env.white_king_castle_is_possible,
-            env.white_queen_castle_is_possible,
-            env.black_king_castle_is_possible,
-            env.black_queen_castle_is_possible,
+
+        compute_minimax(
+            curChessNode,
             halfmove_clock,
-            fullmove_number
+            num_pieces_on_board,
+            halfmove_number
         )
-        print(state_FEN)
-        compute_minimax(curChessNode)
         
         while len(curChessNode.children) != 0:
             
@@ -181,15 +240,18 @@ def play_chess(env, state, curPlayer, clear_screen=True):
             state, reward, done, info = env.step(bestAction)
             curPlayer = not curPlayer # opponent's move
             
-            if not clear_screen:
+            if clear_screen:
                 clear_terminal()
 
             env.render()
             
-            halfmove_clock, num_pieces_on_board = get_halfmoveclock_and_halfmove_number(
-                halfmove_clock, curChessNode, piece_moved, num_pieces_on_board
+            halfmove_clock, num_pieces_on_board, halfmove_number = get_req_data_for_FEN(
+                halfmove_clock,
+                curChessNode,
+                piece_moved,
+                num_pieces_on_board,
+                halfmove_number
             )
-            fullmove_number = info['move_count'] + 1
             
             if done: # game over
                 break            
