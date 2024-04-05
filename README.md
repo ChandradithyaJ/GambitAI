@@ -125,5 +125,5 @@ Run ```gambitAI.py```
 
 ### Modes
  - Currently only supports bot vs bot
- - Execute the aforementioned file to watch a thrilling game between black and white!
+ - Execute the aforementioned file to watch a thrilling game between white and black!
  - Support will be added for player to choose their color and play against the bot soon
