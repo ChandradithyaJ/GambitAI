@@ -121,7 +121,7 @@ pip install -r requirements.txt
 
 ## Execute
 
-Run ```gambitAI.py```
+Run ```gambitAI/gambitAI.py```
 
 ### Modes
  - Currently only supports bot vs bot
