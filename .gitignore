@@ -152,3 +152,7 @@ cython_debug/
 
 # executables
 *.exe
+
+# videos
+*.mov
+*.mp4

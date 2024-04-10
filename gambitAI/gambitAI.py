@@ -6,6 +6,7 @@ import time
 
 K_PLY = 2
 stockfish = Stockfish("stockfish-windows-x86-64-avx2/stockfish/stockfish-windows-x86-64-avx2.exe")
+stockfish.set_elo_rating(2830) # Magnus' Classical FIDE rating as of April 10 2024
 
 def get_FEN(board, player_to_move, wk_castle, wq_castle, bk_castle, bq_castle, halfmove_clock, fullmove_number):
     num_to_piece_char = get_num_to_piece_char()
@@ -102,9 +103,9 @@ def get_children(curChessNode):
 
 def get_init_reward(curChessNode):
     if curChessNode.player == True:
-        return -1e4
+        return -1e9
     else:
-        return 1e4
+        return 1e9
     
 def eval(curChessNode, halfmove_clock, halfmove_number):
     """Evaluation function for the leaf nodes of the game tree"""
@@ -138,10 +139,17 @@ def compute_minimax(root, halfmove_clock, num_pieces_on_board, halfmove_number):
             npb,
             hmn
         )
-        root.minimax = max(
+        
+        if root.player == True:
+            root.minimax = max(
                             root.minimax, 
                             minimax(child, hmc, npb, hmn)
-                        )
+                            )
+        else:
+            root.minimax = min(
+                            root.minimax, 
+                            minimax(child, hmc, npb, hmn)
+                            )
     #print(f'Computed Minimax values for the tree in {time.time()-start}s')
           
 def minimax(curChessNode, halfmove_clock, num_pieces_on_board, halfmove_number):
@@ -205,56 +213,56 @@ def play_chess(env, state, curPlayer, clear_screen=True):
             num_pieces_on_board,
             halfmove_number
         )
-        
-        while len(curChessNode.children) != 0:
             
-            if clear_screen:
-                # time for the user to see the screen before it is cleared
-                time.sleep(1)
+        if clear_screen:
+            # time for the user to see the screen before it is cleared
+            time.sleep(1)
             
-            bestMoveScore = curChessNode.children[0].minimax
-            bestMove = curChessNode.children[0]
-            bestAction = curChessNode.children[0].action
+        bestMoveScore = curChessNode.children[0].minimax
+        bestMove = curChessNode.children[0]
+        bestAction = curChessNode.children[0].action
             
-            curChessNodeChildren = curChessNode.children
+        curChessNodeChildren = curChessNode.children
             
-            if curChessNode.player == True:
-                for child in curChessNodeChildren:
-                    if bestMoveScore < child.minimax:
-                        bestMoveScore = child.minimax
-                        bestMove = child
-                        bestAction = child.action
+        if curChessNode.player == True:
+            for child in curChessNodeChildren:
+                if bestMoveScore < child.minimax:
+                    bestMoveScore = child.minimax
+                    bestMove = child
+                    bestAction = child.action
             
-            else: 
-                for child in curChessNodeChildren:
-                    if bestMoveScore > child.minimax:
-                        bestMoveScore = child.minimax
-                        bestMove = child
-                        bestAction = child.action
+        else: 
+            for child in curChessNodeChildren:
+                if bestMoveScore > child.minimax:
+                    bestMoveScore = child.minimax
+                    bestMove = child
+                    bestAction = child.action
                         
-            # infer which piece has been moved
-            moved_piece_loc = env.action_to_move(bestAction)[0]
-            piece_moved = curChessNode.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]          
+        # infer which piece has been moved
+        moved_piece_loc = env.action_to_move(bestAction)[0]
+        piece_moved = curChessNode.state['board'][moved_piece_loc[0]][moved_piece_loc[1]]          
             
-            curChessNode = bestMove
-            state, reward, done, info = env.step(bestAction)
-            curPlayer = not curPlayer # opponent's move
+        curChessNode = bestMove
+        state, reward, done, info = env.step(bestAction)
+        curPlayer = not curPlayer # opponent's move
             
-            if clear_screen:
-                clear_terminal()
+        if clear_screen:
+            clear_terminal()
 
-            env.render()
+        env.render()
             
-            halfmove_clock, num_pieces_on_board, halfmove_number = get_req_data_for_FEN(
-                halfmove_clock,
-                curChessNode,
-                piece_moved,
-                num_pieces_on_board,
-                halfmove_number
-            )
+        halfmove_clock, num_pieces_on_board, halfmove_number = get_req_data_for_FEN(
+            halfmove_clock,
+            curChessNode,
+            piece_moved,
+            num_pieces_on_board,
+            halfmove_number
+        )
+        
+        del curChessNode # clear cache
             
-            if done: # game over
-                break            
+        if done: # game over
+            break            
     
 
 if __name__ == "__main__":
